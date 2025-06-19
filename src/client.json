@@ -1,0 +1,109 @@
+
+
+
+
+
+{
+  "solar": {
+    "ANS Paper Mills Pvt Ltd": [
+      { "name": "ANS", "plant_id": "IN.INTE.ANS1" }
+    ],
+    "Balaji Malts Private Limited": [
+      { "name": "Balaji-1 Malts Private Limited", "plant_id": "IN.INTE.BAL1" },
+      { "name": "Balaji-2 Malts Private Limited", "plant_id": "IN.INTE.BAL2" }
+    ],
+    "Graphite India Limited": [
+      { "name": "Graphite India Limited Solar", "plant_id": "IN.INTE.GRAI" }
+    ],
+    "Jodhani Papers Pvt Ltd": [
+      { "name": "Jodhani-1 Papers Private Limited", "plant_id": "IN.INTE.JOD1" },
+      { "name": "Jodhani-2 Papers Private Limited", "plant_id": "IN.INTE.JOD2" }
+    ],
+    "Khayati Steel Industries Private Limited": [
+      { "name": "KSIPL_Solar_13.5MWp", "plant_id": "IN.INTE.KSIS" },
+      { "name": "KPL_Solar_6MWp", "plant_id": "IN.INTE.KPLS" }
+    ],
+    "Kids Clinic India Limited": [
+      { "name": "Kids Clinic India Limited", "plant_id": "IN.INTE.KIDS" }
+    ],
+    "Klene Paks Limited": [
+      { "name": "Klene Paks Ltd Solar", "plant_id": "IN.INTE.KPRT" }
+    ],
+    "M/s SAA AB ENGINEERING PVT LTD": [
+      { "name": "SAA AB 3.1 solar power plant", "plant_id": "IN.INTE.SAAB" }
+    ],
+    "Stovekraft Limited": [
+      { "name": "StoveKraft Limited - Unit-3", "plant_id": "IN.INTE.STOV" },
+      { "name": "Stovekraft Ltd Solar", "plant_id": "IN.INTE.SKRT" },
+      { "name": "Stovekraft Ltd Solar2", "plant_id": "IN.INTE.SKRT2" }
+    ]
+  },
+  "wind": {
+    "ANS Paper Mills Pvt Ltd": [
+      { "name": "A N S Paper Mills Pvt Ltd", "plant_id": "IN.INTE.ANSP" }
+    ],
+    "Avon Plastic Industries Pvt Ltd": [
+      { "name": "Avon Plastic Industries Pvt Ltd", "plant_id": "IN.INTE.APIP" }
+    ],
+    "Balaji Malts Private Limited": [
+      { "name": "Balaji Malts Private Limited", "plant_id": "IN.INTE.BMPL" }
+    ],
+    "CIL_Wind_2MW": [
+      { "name": "CIL_Wind_2MW", "plant_id": "IN.INTE.CILW" }
+    ],
+    "Eastern Silk mill": [
+      { "name": "Eastern Silk mill", "plant_id": "IN.INTE.JPPL" }
+    ],
+    "Graphite India Limited": [
+      { "name": "Graphite India Limited", "plant_id": "IN.INTE.GRAP" }
+    ],
+    "Jodhani Papers Pvt Ltd": [
+      { "name": "Jodhani Papers Pvt Ltd", "plant_id": "IN.INTE.JPPL" }
+    ],
+    "Khayati Steel Industries Private Limited": [
+      { "name": "Khayati Steel Industries Private Limited", "plant_id": "IN.INTE.KSIP" }
+    ],
+    "Kingyarn": [
+      { "name": "Kingyarn", "plant_id": "IN.INTE.KING" }
+    ],
+    "Klene Paks Limited": [
+      { "name": "Klene Paks Limited", "plant_id": "IN.INTE.KPLW" }
+    ],
+    "M/s SAA AB ENGINEERING PVT LTD": [
+      { "name": "M/s SAA AB ENGINEERING PVT LTD", "plant_id": "IN.INTE.SABE" }
+    ],
+    "MPL_Wind_2MW": [
+      { "name": "MPL_Wind_2MW", "plant_id": "IN.INTE.MPLW" }
+    ],
+    "Milan Ginnings": [
+      { "name": "Milan Ginnings", "plant_id": "IN.INTE.JPPL" }
+    ],
+    "NDL_Wind_2MW": [
+      { "name": "NDL_Wind_2MW", "plant_id": "IN.INTE.NDLW" }
+    ],
+    "Nandan Industries Private Limited": [
+      { "name": "Nandan Industries Private Limited", "plant_id": "IN.INTE.NIPL" }
+    ],
+    "QEPL_Wind_2MW": [
+      { "name": "QEPL_Wind_2MW", "plant_id": "IN.INTE.QEPL" }
+    ],
+    "RC Plasto": [
+      { "name": "RC Plasto", "plant_id": "IN.INTE.PLAS" }
+    ],
+    "SSPL_Wind_2MW": [
+      { "name": "SSPL_Wind_2MW", "plant_id": "IN.INTE.SSPL" }
+    ],
+    "Sidwin fabric Pvt. Ltd.": [
+      { "name": "Sidwin fabric Pvt. Ltd.", "plant_id": "IN.INTE.SIFA" }
+    ],
+    "Sipani Fibres Ltd": [
+      { "name": "Sipani Fibres Ltd", "plant_id": "IN.INTE.SPFL" }
+    ],
+    "Stovekraft Limited": [
+      { "name": "Stovekraft Limited", "plant_id": "IN.INTE.SKFT" }
+    ],
+    "Sustainable Spinning & Commodities": [
+      { "name": "Sustainable Spinning & Commodities", "plant_id": null }
+    ]
+  }
+}

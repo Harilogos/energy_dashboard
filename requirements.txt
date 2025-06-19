@@ -1,0 +1,54 @@
+# Core dependencies
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+python-dotenv
+pyyaml
+
+# Database dependencies
+sqlalchemy
+pymysql
+cryptography
+
+# Core testing framework
+pytest
+pytest-cov
+pytest-mock
+pytest-xdist
+pytest-timeout
+
+# Test utilities
+pytest-html
+pytest-json-report
+pytest-benchmark
+pytest-asyncio
+
+# Mocking and fixtures
+responses
+factory-boy
+freezegun
+
+# Coverage reporting
+coverage
+coverage-badge
+
+# Code quality
+flake8
+black
+isort
+mypy
+
+# Performance testing
+memory-profiler
+psutil
+
+# Test data generation
+Faker
+hypothesis
+
+# Development utilities
+tox
+pre-commit

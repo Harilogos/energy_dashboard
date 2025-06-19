@@ -1,0 +1,70 @@
+# Application configuration
+app:
+  title: "Solar & Wind Dashboard"
+  layout: "wide"
+  sidebar_state: "expanded"
+  theme:
+    primaryColor: "#1E88E5"
+    backgroundColor: "#FFFFFF"
+    secondaryBackgroundColor: "#F0F2F6"
+    textColor: "#262730"
+    font: "sans serif"
+    maxWidth: "1200px"
+    paddingTop: "2rem"
+    paddingRight: "2rem"
+    paddingLeft: "2rem"
+    paddingBottom: "2rem"
+
+# Data configuration
+data:
+  cache_ttl: 3600  # Cache time-to-live in seconds
+  max_rows: 10000
+  date_format: "%Y-%m-%d"
+  default_date_range: 30  # Default date range in days
+  retry_attempts: 3
+  retry_delay: 1
+  consumption_csv_path: "Data/csv/Consumption data Cloud nine - processed_data.csv"
+  # Performance optimization settings
+  enable_csv_caching: true
+  csv_cache_ttl: 7200  # 2 hours for CSV data
+  enable_concurrent_processing: true
+  max_concurrent_requests: 4
+  chunk_size: 1000  # For processing large datasets
+  enable_data_compression: true
+  # Smart API caching settings
+  enable_smart_caching: true
+  api_cache_ttl: 21600  # 6 hours for API data
+  bulk_fetch_enabled: true
+  bulk_fetch_months: 6  # Fetch 6 months of data in bulk
+  auto_cleanup_days: 30  # Auto cleanup cache older than 30 days
+  preload_common_ranges: true  # Preload commonly used date ranges
+  default_granularity: "15m"  # Industry standard: 15-minute granularity for energy data
+
+# Visualization configuration
+visualization:
+  default_height: 6
+  default_width: 12
+  dpi: 100
+  style: "whitegrid"
+  colors:
+    primary: "#1E88E5"
+    secondary: "#FFC107"
+    success: "#4CAF50"
+    danger: "#F44336"
+    warning: "#FF9800"
+  chart_types:
+    line: true
+    bar: true
+    area: true
+    scatter: true
+    pie: true
+
+# Generation configuration
+generation:
+  loss_percentage: 2.8  # Transmission/distribution loss percentage
+
+# Database configuration
+database:
+  connection_pool_size: 5
+  connection_timeout: 300
+  query_timeout: 60
