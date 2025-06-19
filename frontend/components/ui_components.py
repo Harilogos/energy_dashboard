@@ -3,10 +3,54 @@ UI components for the Energy Generation Dashboard.
 """
 import streamlit as st
 
-
 from backend.logs.logger_setup import setup_logger
 
 logger = setup_logger('ui_components', 'ui_components.log')
+
+
+def create_tod_summary_table(generation_data):
+    """Create a summary table for Time of Day generation with percentages"""
+    import pandas as pd
+    
+    # Calculate total generation
+    total_generation = sum(generation_data.values())
+    
+    # Create summary data
+    summary_data = []
+    for tod, generation in generation_data.items():
+        percentage = (generation / total_generation * 100) if total_generation > 0 else 0
+        summary_data.append({
+            'ToD': tod,
+            'Generation': f"{generation:.2f} MW",
+            'Percentage': f"{percentage:.1f}%"
+        })
+    
+    # Create DataFrame and display as table
+    df = pd.DataFrame(summary_data)
+    st.table(df)
+
+
+def create_tod_consumption_summary_table(consumption_data):
+    """Create a summary table for Time of Day consumption with percentages"""
+    import pandas as pd
+    
+    # Calculate total consumption
+    total_consumption = sum(consumption_data.values())
+    
+    # Create summary data
+    summary_data = []
+    for tod, consumption in consumption_data.items():
+        percentage = (consumption / total_consumption * 100) if total_consumption > 0 else 0
+        summary_data.append({
+            'ToD': tod,
+            'Consumption': f"{consumption:.2f} MW",
+            'Percentage': f"{percentage:.1f}%"
+        })
+    
+    # Create DataFrame and display as table
+    df = pd.DataFrame(summary_data)
+    st.table(df)
+
 
 def load_client_data():
     """Load client data from database"""

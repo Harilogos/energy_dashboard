@@ -35,7 +35,7 @@ def map_tod_bin_name(tod_bin):
     Map database ToD bin names to expected visualization format.
     
     Args:
-        tod_bin: ToD bin name from database (e.g., 'Peak', 'Off-Peak', etc.)
+        tod_bin: ToD bin name from database (e.g., 'Day (Normal)', 'Morning Peak', etc.)
         
     Returns:
         str: Mapped ToD bin name in expected format
@@ -46,27 +46,58 @@ def map_tod_bin_name(tod_bin):
     # Get bin labels in the full format for visualization
     tod_bin_labels = get_tod_bin_labels("full")
     
-    
     # Mapping from database names to expected visualization names
+    # Based on your database query results and ToD config:
+    # tod_bin_labels[0] = '10 PM - 6 AM (Off-Peak)'
+    # tod_bin_labels[1] = '6 AM - 9 AM (Morning Peak)'  
+    # tod_bin_labels[2] = '9 AM - 6 PM (Day (Normal))'
+    # tod_bin_labels[3] = '6 PM - 10 PM (Evening Peak)'
+    
     tod_mapping = {
-        'Peak': tod_bin_labels[0],  # '6 AM - 9 AM (Peak)'
-        'Peak_2': tod_bin_labels[2],  # '6 PM - 10 PM (Peak)'
-        'Off-Peak': tod_bin_labels[1],  # '9 AM - 6 PM (Off-Peak)'
-        'Off-Peak_3': tod_bin_labels[3],  # '10 PM - 6 AM (Off-Peak)',
-        # Add fallback mappings for common variations
-        'Morning Peak': tod_bin_labels[0],
-        'Evening Peak': tod_bin_labels[2],
-        'Daytime Off-Peak': tod_bin_labels[1],
-        'Nighttime Off-Peak': tod_bin_labels[3],
-        # Add mappings for compact format from tod_config
-        '6-9AM (Peak)': tod_bin_labels[0],
-        '18-22PM (Peak)': tod_bin_labels[2],
-        '9-18PM (Off-Peak)': tod_bin_labels[1],
-        '22-6AM (Off-Peak)': tod_bin_labels[3]
+        # Direct mappings from database slot names
+        'Off-Peak': tod_bin_labels[0],          # '10 PM - 6 AM (Off-Peak)'
+        'Morning Peak': tod_bin_labels[1],      # '6 AM - 9 AM (Morning Peak)'
+        'Day (Normal)': tod_bin_labels[2],      # '9 AM - 6 PM (Day (Normal))'
+        'Evening Peak': tod_bin_labels[3],      # '6 PM - 10 PM (Evening Peak)'
+        
+        # Alternative variations that might exist
+        'Peak': tod_bin_labels[1],              # Default peak to morning peak
+        'Normal': tod_bin_labels[2],            # Normal to day normal
+        'Offpeak': tod_bin_labels[0],           # Alternative spelling
+        'off-peak': tod_bin_labels[0],          # Lowercase variation
+        'morning peak': tod_bin_labels[1],      # Lowercase variation
+        'evening peak': tod_bin_labels[3],      # Lowercase variation
+        'day normal': tod_bin_labels[2],        # Alternative phrasing
+        'day (normal)': tod_bin_labels[2],      # Exact match with parentheses
+        
+        # Legacy mappings for backward compatibility
+        'Peak_1': tod_bin_labels[1],            # Morning peak
+        'Peak_2': tod_bin_labels[3],            # Evening peak
+        'Off-Peak_1': tod_bin_labels[2],        # Day off-peak
+        'Off-Peak_2': tod_bin_labels[0],        # Night off-peak
+        
+        # Compact format mappings
+        '6-9AM': tod_bin_labels[1],
+        '9-18PM': tod_bin_labels[2], 
+        '18-22PM': tod_bin_labels[3],
+        '22-6AM': tod_bin_labels[0],
     }
     
-    # Return mapped name if found, otherwise return original
-    return tod_mapping.get(str(tod_bin), str(tod_bin))
+    # Convert input to string and try exact match first
+    tod_bin_str = str(tod_bin).strip()
+    
+    # Try exact match first
+    if tod_bin_str in tod_mapping:
+        return tod_mapping[tod_bin_str]
+    
+    # Try case-insensitive match
+    for key, value in tod_mapping.items():
+        if key.lower() == tod_bin_str.lower():
+            return value
+    
+    # If no mapping found, return original
+    logger.warning(f"No mapping found for ToD bin '{tod_bin_str}'. Available mappings: {list(tod_mapping.keys())}")
+    return tod_bin_str
 
 def format_thousands(x: float, pos: int) -> str:
     """Format y-axis labels to show thousands with K suffix"""
@@ -1052,14 +1083,14 @@ def create_tod_binned_plot(df, plant_name, start_date, end_date=None):
             mapped_tod_bin = map_tod_bin_name(tod_bin)
             
             # Use consistent labeling format for both single day and multiple day plots
-            if mapped_tod_bin == tod_bin_labels[0]:  # '6 AM - 9 AM (Peak)'
-                custom_labels.append('6 AM - 9 AM\n(Peak)')
-            elif mapped_tod_bin == tod_bin_labels[1]:  # '9 AM - 6 PM (Off-Peak)'
-                custom_labels.append('9 AM - 6 PM\n(Off-Peak)')
-            elif mapped_tod_bin == tod_bin_labels[2]:  # '6 PM - 10 PM (Peak)'
-                custom_labels.append('6 PM - 10 PM\n(Peak)')
-            elif mapped_tod_bin == tod_bin_labels[3]:  # '10 PM - 6 AM (Off-Peak)'
+            if mapped_tod_bin == tod_bin_labels[0]:  # '10 PM - 6 AM (Off-Peak)'
                 custom_labels.append('10 PM - 6 AM\n(Off-Peak)')
+            elif mapped_tod_bin == tod_bin_labels[1]:  # '6 AM - 9 AM (Morning Peak)'
+                custom_labels.append('6 AM - 9 AM\n(Morning Peak)')
+            elif mapped_tod_bin == tod_bin_labels[2]:  # '9 AM - 6 PM (Day (Normal))'
+                custom_labels.append('9 AM - 6 PM\n(Day (Normal))')
+            elif mapped_tod_bin == tod_bin_labels[3]:  # '6 PM - 10 PM (Evening Peak)'
+                custom_labels.append('6 PM - 10 PM\n(Evening Peak)')
             else:
                 # Fallback to original label if not recognized
                 custom_labels.append(str(tod_bin))
@@ -1272,10 +1303,10 @@ def create_tod_generation_plot(df, plant_name, start_date, end_date=None):
             
             # Sort by the expected ToD order for better visualization
             tod_order = {
-                tod_bin_labels[0]: 0,  # Morning Peak (6 AM - 9 AM)
-                tod_bin_labels[1]: 1,  # Daytime Off-Peak (9 AM - 6 PM)
-                tod_bin_labels[2]: 2,  # Evening Peak (6 PM - 10 PM)
-                tod_bin_labels[3]: 3   # Nighttime Off-Peak (10 PM - 6 AM)
+                tod_bin_labels[0]: 0,  # Nighttime Off-Peak (10 PM - 6 AM)
+                tod_bin_labels[1]: 1,  # Morning Peak (6 AM - 9 AM)
+                tod_bin_labels[2]: 2,  # Daytime Normal (9 AM - 6 PM)
+                tod_bin_labels[3]: 3   # Evening Peak (6 PM - 10 PM)
             }
             
             df_mapped['sort_order'] = df_mapped['tod_bin_mapped'].map(tod_order)
@@ -1284,12 +1315,12 @@ def create_tod_generation_plot(df, plant_name, start_date, end_date=None):
             # Create a simple bar chart with the aggregated data
             fig, ax = plt.subplots(figsize=(12, 6))
             
-            # Define colors for each ToD category
+            # Define colors for each ToD category using the exact color scheme specified
             tod_colors_mapped = {
-                tod_bin_labels[0]: '#FF5722',  # Deep Orange for morning peak
-                tod_bin_labels[1]: '#FFC107',  # Amber for daytime off-peak
-                tod_bin_labels[2]: '#E91E63',  # Pink for evening peak
-                tod_bin_labels[3]: '#3F51B5'   # Indigo for nighttime off-peak
+                tod_bin_labels[0]: '#6A1B9A',  # Deep Purple/Violet for off-peak (10pm to 6am)
+                tod_bin_labels[1]: '#FB8C00',  # Bright Orange for morning peak (6am to 9am)
+                tod_bin_labels[2]: '#0288D1',  # Sky Blue for day normal (9am to 6pm)
+                tod_bin_labels[3]: '#C62828'   # Crimson Red for evening peak (6pm to 10pm)
             }
             
             # Create bars with appropriate colors
@@ -1358,18 +1389,18 @@ def create_tod_generation_plot(df, plant_name, start_date, end_date=None):
         fig, ax = plt.subplots(figsize=(12, 7))
         
         tod_categories = {
-            0: tod_bin_labels[0],  # '6 AM - 9 AM (Peak)'
-            1: tod_bin_labels[1],  # '9 AM - 6 PM (Off-Peak)'
-            2: tod_bin_labels[2],  # '6 PM - 10 PM (Peak)'
-            3: tod_bin_labels[3]   # '10 PM - 6 AM (Off-Peak)'
+            0: tod_bin_labels[0],  # '10 PM - 6 AM (Off-Peak)'
+            1: tod_bin_labels[1],  # '6 AM - 9 AM (Morning Peak)'
+            2: tod_bin_labels[2],  # '9 AM - 6 PM (Day (Normal))'
+            3: tod_bin_labels[3]   # '6 PM - 10 PM (Evening Peak)'
         }
 
       
         tod_colors = {
-            tod_bin_labels[0]: '#FF5722',      # Deep Orange for morning peak (6 AM - 9 AM)
-            tod_bin_labels[1]: '#FFC107',      # Amber/Yellow for daytime off-peak (9 AM - 6 PM)
-            tod_bin_labels[2]: '#E91E63',      # Pink for evening peak (6 PM - 10 PM)
-            tod_bin_labels[3]: '#3F51B5'       # Indigo for nighttime off-peak (10 PM - 6 AM)
+            tod_bin_labels[0]: '#6A1B9A',      # Deep Purple/Violet for off-peak (10pm to 6am)
+            tod_bin_labels[1]: '#FB8C00',      # Bright Orange for morning peak (6am to 9am)
+            tod_bin_labels[2]: '#0288D1',      # Sky Blue for day normal (9am to 6pm)
+            tod_bin_labels[3]: '#C62828'       # Crimson Red for evening peak (6pm to 10pm)
         }
 
         is_single_day = end_date is None or start_date == end_date
@@ -1591,10 +1622,10 @@ def create_tod_generation_plot(df, plant_name, start_date, end_date=None):
                 
                 # Sort by the expected ToD order for better visualization
                 tod_order = {
-                    tod_bin_labels[0]: 0,  # Morning Peak
-                    tod_bin_labels[1]: 1,  # Daytime Off-Peak
-                    tod_bin_labels[2]: 2,  # Evening Peak
-                    tod_bin_labels[3]: 3   # Nighttime Off-Peak
+                    tod_bin_labels[0]: 0,  # Nighttime Off-Peak
+                    tod_bin_labels[1]: 1,  # Morning Peak
+                    tod_bin_labels[2]: 2,  # Daytime Normal
+                    tod_bin_labels[3]: 3   # Evening Peak
                 }
                 
                 df_mapped['sort_order'] = df_mapped['tod_bin_mapped'].map(tod_order)
@@ -1602,10 +1633,10 @@ def create_tod_generation_plot(df, plant_name, start_date, end_date=None):
                 
                 # Define colors for each ToD category
                 tod_colors_mapped = {
-                    tod_bin_labels[0]: '#FF5722',  # Deep Orange for morning peak
-                    tod_bin_labels[1]: '#FFC107',  # Amber for daytime off-peak
-                    tod_bin_labels[2]: '#E91E63',  # Pink for evening peak
-                    tod_bin_labels[3]: '#3F51B5'   # Indigo for nighttime off-peak
+                    tod_bin_labels[0]: '#6A1B9A',  # Deep Purple for nighttime off-peak
+                    tod_bin_labels[1]: '#FB8C00',  # Bright Orange for morning peak
+                    tod_bin_labels[2]: '#0288D1',  # Sky Blue for day normal
+                    tod_bin_labels[3]: '#C62828'   # Crimson Red for evening peak
                 }
                 
                 # Create bars with appropriate colors
@@ -1718,10 +1749,10 @@ def create_tod_consumption_plot(df, plant_name, start_date, end_date=None):
             
             # Sort by the expected ToD order for better visualization
             tod_order = {
-                tod_bin_labels[0]: 0,  # Morning Peak (6 AM - 9 AM)
-                tod_bin_labels[1]: 1,  # Daytime Off-Peak (9 AM - 6 PM)
-                tod_bin_labels[2]: 2,  # Evening Peak (6 PM - 10 PM)
-                tod_bin_labels[3]: 3   # Nighttime Off-Peak (10 PM - 6 AM)
+                tod_bin_labels[0]: 0,  # Nighttime Off-Peak (10 PM - 6 AM)
+                tod_bin_labels[1]: 1,  # Morning Peak (6 AM - 9 AM)
+                tod_bin_labels[2]: 2,  # Daytime Normal (9 AM - 6 PM)
+                tod_bin_labels[3]: 3   # Evening Peak (6 PM - 10 PM)
             }
             
             df_mapped['sort_order'] = df_mapped['tod_bin_mapped'].map(tod_order)
@@ -1730,12 +1761,12 @@ def create_tod_consumption_plot(df, plant_name, start_date, end_date=None):
             # Create a simple bar chart with the aggregated data
             fig, ax = plt.subplots(figsize=(12, 6))
             
-            # Define colors for each ToD category
+            # Define colors for each ToD category using the specified color scheme
             tod_colors_mapped = {
-                tod_bin_labels[0]: '#FF5722',  # Deep Orange for morning peak
-                tod_bin_labels[1]: '#FFC107',  # Amber for daytime off-peak
-                tod_bin_labels[2]: '#E91E63',  # Pink for evening peak
-                tod_bin_labels[3]: '#3F51B5'   # Indigo for nighttime off-peak
+                tod_bin_labels[0]: '#6A1B9A',  # Deep Purple/Violet for off-peak (10pm-6am)
+                tod_bin_labels[1]: '#FB8C00',  # Bright Orange for morning peak (6am-9am)
+                tod_bin_labels[2]: '#0288D1',  # Sky Blue for day normal (9am-6pm)
+                tod_bin_labels[3]: '#C62828'   # Crimson Red for evening peak (6pm-10pm)
             }
             
             # Create bars with appropriate colors
@@ -1805,18 +1836,18 @@ def create_tod_consumption_plot(df, plant_name, start_date, end_date=None):
 
         # Define ToD categories for stacking - FIXED to match actual ToD bin labels
         tod_categories = {
-            0: tod_bin_labels[0],  # '6 AM - 9 AM (Peak)'
-            1: tod_bin_labels[1],  # '9 AM - 6 PM (Off-Peak)'
-            2: tod_bin_labels[2],  # '6 PM - 10 PM (Peak)'
-            3: tod_bin_labels[3]   # '10 PM - 6 AM (Off-Peak)'
+            0: tod_bin_labels[0],  # '10 PM - 6 AM (Off-Peak)'
+            1: tod_bin_labels[1],  # '6 AM - 9 AM (Morning Peak)'
+            2: tod_bin_labels[2],  # '9 AM - 6 PM (Day (Normal))'
+            3: tod_bin_labels[3]   # '6 PM - 10 PM (Evening Peak)'
         }
 
-        # Define colors for each ToD category - using distinct colors that complement the generation colors
+        # Define colors for each ToD category using the exact color scheme specified
         tod_colors = {
-            tod_bin_labels[0]: '#F44336',      # Red for morning peak (6 AM - 9 AM)
-            tod_bin_labels[1]: '#00BCD4',      # Cyan for daytime off-peak (9 AM - 6 PM)
-            tod_bin_labels[2]: '#9C27B0',      # Purple for evening peak (6 PM - 10 PM)
-            tod_bin_labels[3]: '#673AB7'       # Deep Purple for nighttime off-peak (10 PM - 6 AM)
+            tod_bin_labels[0]: '#6A1B9A',      # Deep Purple/Violet for off-peak (10pm to 6am)
+            tod_bin_labels[1]: '#FB8C00',      # Bright Orange for morning peak (6am to 9am)
+            tod_bin_labels[2]: '#0288D1',      # Sky Blue for day normal (9am to 6pm)
+            tod_bin_labels[3]: '#C62828'       # Crimson Red for evening peak (6pm to 10pm)
         }
 
         is_single_day = end_date is None or start_date == end_date
@@ -2102,6 +2133,267 @@ def create_tod_consumption_plot(df, plant_name, start_date, end_date=None):
         return fig
 
 
+def create_focused_tod_generation_plot(df, plant_name, selected_date):
+    """
+    Create a focused ToD generation plot with specified color scheme.
+    
+    Args:
+        df (DataFrame): ToD binned generation data with 'tod_bin' and 'generation_kwh' columns
+        plant_name (str): Name of the plant
+        selected_date (datetime): Selected date for the plot
+
+    Returns:
+        Figure: Matplotlib figure object
+    """
+    try:
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        if df.empty:
+            ax.text(0.5, 0.5, 'No ToD generation data available', 
+                   ha='center', va='center', fontsize=14, color='red')
+            return fig
+
+        # Color scheme as specified
+        tod_colors = {
+            'Off-Peak': '#6A1B9A',        # Deep Purple/Violet (10pm-6am)
+            'Morning Peak': '#FB8C00',    # Bright Orange (6am-9am)
+            'Day (Normal)': '#0288D1',    # Sky Blue (9am-6pm)
+            'Evening Peak': '#C62828'     # Crimson Red (6pm-10pm)
+        }
+        
+        # Time slot labels
+        time_labels = {
+            'Off-Peak': '10pm to 6am\n(Off-Peak)',
+            'Morning Peak': '6am to 9am\n(Morning Peak)',
+            'Day (Normal)': '9am to 6pm\n(Day Normal)',
+            'Evening Peak': '6pm to 10pm\n(Evening Peak)'
+        }
+        
+        # Process data
+        df_plot = df.copy()
+        df_plot['slot_name'] = df_plot['tod_bin'].apply(lambda x: map_tod_bin_name(x))
+        generation_by_slot = df_plot.groupby('slot_name')['generation_kwh'].sum().reset_index()
+        
+        # Sort by time order
+        slot_order = ['Off-Peak', 'Morning Peak', 'Day (Normal)', 'Evening Peak']
+        generation_by_slot['order'] = generation_by_slot['slot_name'].map({slot: i for i, slot in enumerate(slot_order)})
+        generation_by_slot = generation_by_slot.sort_values('order')
+        
+        # Create bars
+        for i, (_, row) in enumerate(generation_by_slot.iterrows()):
+            slot_name = row['slot_name']
+            generation = row['generation_kwh']
+            color = tod_colors.get(slot_name, '#808080')
+            
+            ax.bar(i, generation, width=0.6, color=color, alpha=0.9, 
+                  edgecolor='white', linewidth=2)
+            
+            # Add value labels
+            ax.text(i, generation + generation * 0.02, f'{generation:.1f} kWh',
+                   ha='center', va='bottom', fontsize=11, fontweight='bold')
+        
+        # Customize plot
+        plant_display_name = get_plant_display_name(plant_name)
+        ax.set_title(f'ToD Generation - {plant_display_name}\n{selected_date.strftime("%B %d, %Y")}', 
+                    fontsize=16, fontweight='bold', pad=20)
+        
+        ax.set_xticks(range(len(generation_by_slot)))
+        x_labels = [time_labels.get(slot, slot) for slot in generation_by_slot['slot_name']]
+        ax.set_xticklabels(x_labels, fontsize=10, ha='center')
+        
+        ax.set_ylabel('Generation (kWh)', fontsize=12, fontweight='bold')
+        ax.yaxis.set_major_formatter(FuncFormatter(format_thousands))
+        ax.grid(True, axis='y', linestyle='--', alpha=0.3)
+        ax.set_axisbelow(True)
+        
+        # Add total generation summary
+        total_generation = generation_by_slot['generation_kwh'].sum()
+        ax.text(0.02, 0.98, f'Total Generation: {total_generation:,.1f} kWh',
+               transform=ax.transAxes,
+               bbox=dict(boxstyle="round,pad=0.5", facecolor='lightgreen', alpha=0.8),
+               fontsize=11, verticalalignment='top', fontweight='bold')
+        
+        # Set y-axis limits
+        max_generation = generation_by_slot['generation_kwh'].max()
+        ax.set_ylim(0, max_generation * 1.15)
+        
+        plt.tight_layout()
+        
+        fig.text(0.99, 0.01, 'ToD Generation Analysis',
+                fontsize=8, color='gray', ha='right', va='bottom', alpha=0.5)
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating focused ToD generation plot: {e}")
+        return create_error_figure(f"Error creating ToD generation plot: {str(e)}")
+
+
+def create_focused_tod_consumption_plot(df, plant_name, selected_date):
+    """
+    Create a focused ToD consumption plot with the specified color scheme.
+    
+    Slot Name       Time Slot       Suggested Color Hex Code
+    Off-Peak        10pm to 6am     Deep Purple / Violet #6A1B9A
+    Morning Peak    6am to 9am      Bright Orange #FB8C00
+    Day (Normal)    9am to 6pm      Sky Blue #0288D1
+    Evening Peak    6pm to 10pm     Crimson Red #C62828
+
+    Args:
+        df (DataFrame): ToD binned consumption data
+        plant_name (str): Name of the plant
+        selected_date (datetime): Selected date for the plot
+
+    Returns:
+        Figure: Matplotlib figure object
+    """
+    try:
+        # Create the figure
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        if df.empty:
+            ax.text(0.5, 0.5, 'No ToD consumption data available', 
+                   ha='center', va='center', fontsize=14, color='red')
+            ax.set_title(f"ToD Consumption - {get_plant_display_name(plant_name)}", 
+                        fontsize=16, fontweight='bold')
+            return fig
+
+        # Define the exact color scheme as specified
+        tod_color_scheme = {
+            'Off-Peak': '#6A1B9A',        # Deep Purple / Violet (10pm to 6am)
+            'Morning Peak': '#FB8C00',    # Bright Orange (6am to 9am)
+            'Day (Normal)': '#0288D1',    # Sky Blue (9am to 6pm)
+            'Evening Peak': '#C62828'     # Crimson Red (6pm to 10pm)
+        }
+        
+        # Define time slot labels for display
+        time_slot_labels = {
+            'Off-Peak': '10pm to 6am\n(Off-Peak)',
+            'Morning Peak': '6am to 9am\n(Morning Peak)',
+            'Day (Normal)': '9am to 6pm\n(Day Normal)',
+            'Evening Peak': '6pm to 10pm\n(Evening Peak)'
+        }
+        
+        # Ensure we have the required columns
+        if 'tod_bin' not in df.columns or 'consumption_kwh' not in df.columns:
+            logger.error(f"Required columns missing. Available: {df.columns.tolist()}")
+            ax.text(0.5, 0.5, 'Required data columns missing', 
+                   ha='center', va='center', fontsize=14, color='red')
+            return fig
+        
+        # Map tod_bin names to standard slot names
+        df_plot = df.copy()
+        df_plot['slot_name'] = df_plot['tod_bin'].apply(lambda x: map_tod_bin_name(x))
+        
+        # Group by slot name and sum consumption
+        consumption_by_slot = df_plot.groupby('slot_name')['consumption_kwh'].sum().reset_index()
+        
+        # Sort by time order (Off-Peak first as it starts at 10pm)
+        slot_order = ['Off-Peak', 'Morning Peak', 'Day (Normal)', 'Evening Peak']
+        consumption_by_slot['order'] = consumption_by_slot['slot_name'].map({slot: i for i, slot in enumerate(slot_order)})
+        consumption_by_slot = consumption_by_slot.sort_values('order')
+        
+        # Create the bar chart
+        bars = []
+        for i, (_, row) in enumerate(consumption_by_slot.iterrows()):
+            slot_name = row['slot_name']
+            consumption = row['consumption_kwh']
+            color = tod_color_scheme.get(slot_name, '#808080')  # Default gray if not found
+            
+            bar = ax.bar(
+                i,
+                consumption,
+                width=0.6,
+                color=color,
+                alpha=0.9,
+                edgecolor='white',
+                linewidth=2,
+                label=slot_name
+            )
+            bars.extend(bar)
+        
+        # Add consumption values on top of bars
+        for i, (_, row) in enumerate(consumption_by_slot.iterrows()):
+            consumption = row['consumption_kwh']
+            ax.text(
+                i,
+                consumption + consumption * 0.02,
+                f'{consumption:.1f} kWh',
+                ha='center',
+                va='bottom',
+                fontsize=11,
+                fontweight='bold',
+                color='black'
+            )
+        
+        # Customize the plot
+        plant_display_name = get_plant_display_name(plant_name)
+        ax.set_title(f'ToD Consumption - {plant_display_name}\n{selected_date.strftime("%B %d, %Y")}', 
+                    fontsize=16, fontweight='bold', pad=20)
+        
+        # Set x-axis labels with time slots
+        ax.set_xticks(range(len(consumption_by_slot)))
+        x_labels = [time_slot_labels.get(slot, slot) for slot in consumption_by_slot['slot_name']]
+        ax.set_xticklabels(x_labels, fontsize=10, ha='center')
+        
+        # Set y-axis
+        ax.set_ylabel('Consumption (kWh)', fontsize=12, fontweight='bold')
+        
+        # Format y-axis with K for thousands
+        ax.yaxis.set_major_formatter(FuncFormatter(format_thousands))
+        
+        # Add grid for better readability
+        ax.grid(True, axis='y', linestyle='--', alpha=0.3)
+        ax.set_axisbelow(True)
+        
+        # Add total consumption summary
+        total_consumption = consumption_by_slot['consumption_kwh'].sum()
+        ax.text(0.02, 0.98, f'Total Consumption: {total_consumption:,.1f} kWh',
+               transform=ax.transAxes,
+               bbox=dict(boxstyle="round,pad=0.5", facecolor='lightblue', alpha=0.8),
+               fontsize=11,
+               verticalalignment='top',
+               fontweight='bold')
+        
+        # Set y-axis limits with padding
+        max_consumption = consumption_by_slot['consumption_kwh'].max()
+        ax.set_ylim(0, max_consumption * 1.15)
+        
+        # Add legend showing color scheme
+        legend_elements = []
+        for slot_name in slot_order:
+            if slot_name in consumption_by_slot['slot_name'].values:
+                legend_elements.append(
+                    plt.Rectangle((0,0),1,1, 
+                                facecolor=tod_color_scheme[slot_name], 
+                                alpha=0.9,
+                                edgecolor='white',
+                                linewidth=2,
+                                label=f'{slot_name}: {time_slot_labels[slot_name].replace(chr(10), " ")}'
+                    )
+                )
+        
+        ax.legend(handles=legend_elements, 
+                 loc='upper right', 
+                 fontsize=9,
+                 framealpha=0.9,
+                 title='Time Slots')
+        
+        # Adjust layout
+        plt.tight_layout()
+        
+        # Add watermark
+        fig.text(0.99, 0.01, 'ToD Consumption Analysis',
+                fontsize=8, color='gray', ha='right', va='bottom', alpha=0.5)
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating focused ToD consumption plot: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return create_error_figure(f"Error creating ToD consumption plot: {str(e)}")
+
+
 
 
 
@@ -2158,14 +2450,14 @@ def create_daily_tod_binned_plot(df, plant_name, start_date, end_date):
                 mapped_tod_bin = map_tod_bin_name(tod_bin)
                 
                 # Map to our 4 slots
-                if mapped_tod_bin == tod_bin_labels[0]:  # '6 AM - 9 AM (Peak)'
-                    slot = 'Morning'
-                elif mapped_tod_bin == tod_bin_labels[1]:  # '9 AM - 6 PM (Off-Peak)'
-                    slot = 'Afternoon'
-                elif mapped_tod_bin == tod_bin_labels[2]:  # '6 PM - 10 PM (Peak)'
-                    slot = 'Evening'
-                elif mapped_tod_bin == tod_bin_labels[3]:  # '10 PM - 6 AM (Off-Peak)'
+                if mapped_tod_bin == tod_bin_labels[0]:  # '10 PM - 6 AM (Off-Peak)'
                     slot = 'Night'
+                elif mapped_tod_bin == tod_bin_labels[1]:  # '6 AM - 9 AM (Morning Peak)'
+                    slot = 'Morning'
+                elif mapped_tod_bin == tod_bin_labels[2]:  # '9 AM - 6 PM (Day (Normal))'
+                    slot = 'Afternoon'
+                elif mapped_tod_bin == tod_bin_labels[3]:  # '6 PM - 10 PM (Evening Peak)'
+                    slot = 'Evening'
                 else:
                     continue  # Skip unknown bins
                 
@@ -3273,21 +3565,25 @@ def create_monthly_before_banking_settlement_plot(df, plant_name):
         x_positions = np.arange(n_months)
         
         # Colors for ToD slots (mapping for different slot names)
-        # Using more distinct and consistent colors for better visibility
+        # Updated colors using the exact color scheme specified
         tod_colors = {
-            'Slot_1': '#FF5722',    # Deep Orange/Red for Slot 1
-            'Slot_2': '#4CAF50',    # Green for Slot 2
-            'Slot_3': '#2196F3',    # Blue for Slot 3
-            'Slot_4': '#FF9800',    # Orange for Slot 4
-            'Normal': '#4CAF50',    # Green for Normal slot
-            'off-peak': '#2196F3',  # Blue for off-peak
-            'Peak-1': '#FF5722',    # Deep Orange/Red for Peak-1
-            'Peak-2': '#FF9800',    # Orange for Peak-2
+            'Slot_1': '#FB8C00',    # Bright Orange for Morning Peak (6am-9am)
+            'Slot_2': '#0288D1',    # Sky Blue for Day Normal (9am-6pm)
+            'Slot_3': '#C62828',    # Crimson Red for Evening Peak (6pm-10pm)
+            'Slot_4': '#6A1B9A',    # Deep Purple/Violet for Off-Peak (10pm-6am)
+            'Normal': '#0288D1',    # Sky Blue for Normal slot
+            'off-peak': '#6A1B9A',  # Deep Purple/Violet for off-peak
+            'Off-Peak': '#6A1B9A',  # Deep Purple/Violet for Off-Peak (10pm to 6am)
+            'Peak-1': '#FB8C00',    # Bright Orange for Peak-1 (Morning Peak 6am to 9am)
+            'Peak-2': '#C62828',    # Crimson Red for Peak-2 (Evening Peak 6pm to 10pm)
+            'Morning Peak': '#FB8C00',  # Bright Orange for Morning Peak (6am to 9am)
+            'Evening Peak': '#C62828',  # Crimson Red for Evening Peak (6pm to 10pm)
+            'Day (Normal)': '#0288D1',  # Sky Blue for Day Normal (9am to 6pm)
             # Additional common slot names
-            '6-9': '#FF5722',       # Morning peak (6 AM - 9 AM)
-            '9-18': '#4CAF50',      # Day off-peak (9 AM - 6 PM)
-            '18-22': '#FF9800',     # Evening peak (6 PM - 10 PM)
-            '22-6': '#2196F3'       # Night off-peak (10 PM - 6 AM)
+            '6-9': '#FB8C00',       # Morning peak (6 AM - 9 AM) - Bright Orange
+            '9-18': '#0288D1',      # Day normal (9 AM - 6 PM) - Sky Blue
+            '18-22': '#C62828',     # Evening peak (6 PM - 10 PM) - Crimson Red
+            '22-6': '#6A1B9A'       # Off-peak (10 PM - 6 AM) - Deep Purple/Violet
         }
         
         # Plot generation bars (stacked)
@@ -3498,15 +3794,18 @@ def create_monthly_banking_settlement_chart(df: pd.DataFrame, plant_name: str) -
         
         # Aggregate data by month using the correct column names
         monthly_data = df.groupby('month').agg({
-            'total_generation': 'sum',  # Settlement without banking
-            'settled_units_with_banking': 'sum',  # Settlement with banking (partial)
+            'total_generation': 'sum',  # Total generation (for reference)
+            'settled_units_with_banking': 'sum',  # This is matched_settled_sum (settlement without banking)
             'intra_settlement': 'sum', 
             'inter_settlement': 'sum',
             'total_consumption': 'sum',  # Grid consumption without banking
             'surplus_demand_after_banking': 'sum'  # Grid consumption with banking
         }).reset_index()
         
-        # Calculate settlement with banking (settled_units_with_banking + intra + inter)
+        # Settlement without banking = matched_settled_sum (which comes as settled_units_with_banking)
+        monthly_data['settlement_without_banking'] = monthly_data['settled_units_with_banking']
+        
+        # Calculate settlement with banking (matched_settled_sum + intra + inter)
         monthly_data['settlement_with_banking'] = (
             monthly_data['settled_units_with_banking'] + 
             monthly_data['intra_settlement'] + 
@@ -3515,12 +3814,11 @@ def create_monthly_banking_settlement_chart(df: pd.DataFrame, plant_name: str) -
         
         # Calculate total settlement (settlement with banking + settlement without banking)
         monthly_data['total_settlement'] = (
-            monthly_data['settlement_with_banking'] + monthly_data['total_generation']
+            monthly_data['settlement_with_banking'] + monthly_data['settlement_without_banking']
         )
         
         # Rename columns for clarity
         monthly_data = monthly_data.rename(columns={
-            'total_generation': 'settlement_without_banking',
             'total_consumption': 'grid_consumption_without_banking',
             'surplus_demand_after_banking': 'grid_consumption_with_banking'
         })
@@ -3629,14 +3927,14 @@ def create_monthly_banking_settlement_chart(df: pd.DataFrame, plant_name: str) -
             
             # Create pie chart
             wedges, texts, autotexts = ax2.pie(values, labels=None, colors=chart_colors, autopct='%1.1f%%',
-                                              startangle=90, textprops={'fontsize': 8}, 
+                                              startangle=90, textprops={'fontsize': 12, 'fontweight': 'bold'}, 
                                               pctdistance=1.1)
             
             # Enhance the pie chart appearance - make percentages vertical and outside
             for autotext in autotexts:
                 autotext.set_color('black')
                 autotext.set_fontweight('bold')
-                autotext.set_fontsize(9)
+                autotext.set_fontsize(14)  # Increased from 9 to 14
                 autotext.set_rotation(90)  # Make text vertical
             
             # Add legend to pie chart
@@ -3716,6 +4014,13 @@ def create_consumption_plot_db_clean(df: pd.DataFrame, plant_name: str, selected
         df = df.copy()
         df['datetime'] = pd.to_datetime(df['datetime'])
         
+        # Sum consumption for each unique datetime
+        df = df.groupby('datetime', as_index=False)['consumption'].sum()
+
+        print("############################################################")
+        print(df)
+        print("############################################################")
+
         # Sort by datetime
         df = df.sort_values('datetime')
         
@@ -3736,14 +4041,14 @@ def create_consumption_plot_db_clean(df: pd.DataFrame, plant_name: str, selected
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
         
-        # Format y-axis with K for thousands (consistent with ToD consumption)
-        ax.yaxis.set_major_formatter(FuncFormatter(format_thousands))
+        # Format y-axis with K for thousands
+        # ax.yaxis.set_major_formatter(FuncFormatter(format_thousands))
         
         # Add grid
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
         ax.set_axisbelow(True)
         
-        # Add statistics
+        # Adjust y-axis to fit the data better
         if not df.empty:
             total_consumption = df['consumption'].sum()
             avg_consumption = df['consumption'].mean()
@@ -3753,6 +4058,7 @@ def create_consumption_plot_db_clean(df: pd.DataFrame, plant_name: str, selected
 Total: {total_consumption:,.0f} kWh
 Average: {avg_consumption:.1f} kWh
 Peak: {max_consumption:.1f} kWh"""
+            print(stats_text)
             
             ax.text(0.02, 0.98, stats_text,
                    transform=ax.transAxes,

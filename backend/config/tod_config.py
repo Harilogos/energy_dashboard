@@ -17,31 +17,35 @@ if project_root not in sys.path:
 from backend.logs.logger_setup import setup_logger
 logger = setup_logger('tod_config', 'tod_config.log')
 
-# Define ToD slots
+# Define ToD slots with updated time ranges and colors as specified by user
 TOD_SLOTS = [
-    {
-        "start_hour": 6,
-        "end_hour": 9,
-        "name": "Peak",
-        "description": "Morning peak demand period"
-    },
-    {
-        "start_hour": 9,
-        "end_hour": 18,
-        "name": "Off-Peak",
-        "description": "Daytime off-peak period"
-    },
-    {
-        "start_hour": 18,
-        "end_hour": 22,
-        "name": "Peak",
-        "description": "Evening peak demand period"
-    },
     {
         "start_hour": 22,
         "end_hour": 6,
         "name": "Off-Peak",
-        "description": "Nighttime off-peak period"
+        "description": "Off-Peak period (10pm to 6am)",
+        "color": "#6A1B9A"  # Deep Purple / Violet
+    },
+    {
+        "start_hour": 6,
+        "end_hour": 9,
+        "name": "Morning Peak",
+        "description": "Morning peak demand period (6am to 9am)",
+        "color": "#FB8C00"  # Bright Orange
+    },
+    {
+        "start_hour": 9,
+        "end_hour": 18,
+        "name": "Day (Normal)",
+        "description": "Day normal period (9am to 6pm)",
+        "color": "#0288D1"  # Sky Blue
+    },
+    {
+        "start_hour": 18,
+        "end_hour": 22,
+        "name": "Evening Peak",
+        "description": "Evening peak demand period (6pm to 10pm)",
+        "color": "#C62828"  # Crimson Red
     }
 ]
 
@@ -189,8 +193,8 @@ def get_tod_bin_labels(format_type="full"):
 
     Args:
         format_type (str): Format type for the labels. Options:
-            - "full": Full format with AM/PM and spaces (e.g., "6 AM - 9 AM (Peak)")
-            - "compact": Compact format without spaces (e.g., "6-10AM (Peak)")
+            - "full": Full format with AM/PM and spaces (e.g., "10 PM - 6 AM (Off-Peak)")
+            - "compact": Compact format without spaces (e.g., "22-6PM (Off-Peak)")
 
     Returns:
         list: List of ToD bin labels in the specified format
@@ -204,8 +208,24 @@ def get_tod_bin_labels(format_type="full"):
 
         if format_type == "full":
             # Format hours in 12-hour format with AM/PM
-            start_str = f"{start_hour if start_hour <= 12 else start_hour - 12} {'AM' if start_hour < 12 else 'PM'}"
-            end_str = f"{end_hour if end_hour <= 12 else end_hour - 12} {'AM' if end_hour < 12 else 'PM'}"
+            if start_hour == 0:
+                start_str = "12 AM"
+            elif start_hour < 12:
+                start_str = f"{start_hour} AM"
+            elif start_hour == 12:
+                start_str = "12 PM"
+            else:
+                start_str = f"{start_hour - 12} PM"
+                
+            if end_hour == 0:
+                end_str = "12 AM"
+            elif end_hour < 12:
+                end_str = f"{end_hour} AM"
+            elif end_hour == 12:
+                end_str = "12 PM"
+            else:
+                end_str = f"{end_hour - 12} PM"
+                
             bin_labels.append(f"{start_str} - {end_str} ({name})")
         elif format_type == "compact":
             # Compact format for visualization
@@ -233,7 +253,23 @@ def get_tod_slots():
             'start_hour': slot["start_hour"],
             'end_hour': slot["end_hour"],
             'name': slot["name"],
-            'description': slot["description"]
+            'description': slot["description"],
+            'color': slot.get("color", "#808080")  # Default gray if no color specified
         }
     
     return slots_dict
+
+def get_tod_slot_color(slot_name):
+    """
+    Get the color for a specific ToD slot.
+    
+    Args:
+        slot_name (str): Name of the ToD slot
+        
+    Returns:
+        str: Hex color code for the slot
+    """
+    for slot in TOD_SLOTS:
+        if slot["name"] == slot_name:
+            return slot.get("color", "#808080")  # Default gray if no color specified
+    return "#808080"  # Default gray for unknown slots

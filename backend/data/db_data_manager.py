@@ -1,6 +1,6 @@
 """
-Database-based data manager that replaces all API-based data functions.
-This module provides all the data functions needed by the dashboard using database queries.
+Database-based data manager with optimized performance and error handling.
+This module provides clean, efficient data access with proper validation.
 """
 
 import pandas as pd
@@ -8,7 +8,17 @@ import streamlit as st
 import traceback
 from functools import wraps
 
+# Import optimized functions
+from backend.data.db_data_manager_optimized import (
+    get_generation_consumption_comparison_optimized,
+    get_daily_generation_consumption_comparison_optimized,
+    get_generation_only_data_optimized,
+    get_consumption_data_optimized_wrapper,
+    get_tod_binned_data_optimized,
+    data_manager
+)
 
+# Import original functions for backward compatibility
 from backend.data.db_data import (
     get_generation_data_db,
     get_consumption_data_db,
@@ -64,20 +74,16 @@ def retry_on_exception(max_retries=3, retry_delay=1):
         return wrapper
     return decorator
 
-# Plant management functions
-@st.cache_data(ttl=3600)
-@retry_on_exception()
+# Plant management functions - using optimized version
 def get_plants():
     """
-    Get all available plants from database.
+    Get all available plants from database using optimized method.
     
     Returns:
         Dictionary with plant information organized by client and type
     """
     try:
-        plants_dict = get_plants_from_db()
-       
-        return plants_dict
+        return data_manager.get_plants()
     except Exception as e:
         logger.error(f"Failed to get plants: {e}")
         return {}
@@ -101,29 +107,19 @@ def get_plant_display_name(plant_obj):
 
 def get_plant_id(plant_name):
     """
-    Get plant ID from plant name using client.json mapping.
+    Get plant ID from plant name using optimized method.
     
     Args:
         plant_name: Name of the plant or plant object with 'plant_id' key
         
     Returns:
-        Plant ID if found, plant_name otherwise
+        Plant ID if found, None otherwise
     """
     try:
-        # Handle case where plant_name is actually a plant object/dict
-        if isinstance(plant_name, dict):
-            if 'plant_id' in plant_name:
-                return plant_name['plant_id']
-            elif 'name' in plant_name:
-                plant_id = get_plant_id_from_plant_name(plant_name['name'])
-                return plant_id if plant_id else plant_name['name']
-        
-        # Handle case where plant_name is a string - use client.json mapping
-        plant_id = get_plant_id_from_plant_name(plant_name)
-        return plant_id if plant_id else plant_name
+        return data_manager.get_plant_id(plant_name)
     except Exception as e:
         logger.error(f"Failed to get plant ID for {plant_name}: {e}")
-        return plant_name
+        return None
 
 def is_solar_plant(plant_name):
     """
@@ -152,13 +148,10 @@ def is_solar_plant(plant_name):
         logger.error(f"Failed to check if {plant_name} is solar: {e}")
         return False
 
-# Generation data functions
-@st.cache_data(ttl=3600)
-@retry_on_exception()
+# Generation data functions - using optimized versions
 def get_generation_consumption_comparison(plant_name, date):
     """
-    Get generation vs consumption comparison for a single day.
-    Uses new SettlementData computed datetime approach for better performance.
+    Get generation vs consumption comparison using optimized method.
     
     Args:
         plant_name: Name of the plant
@@ -168,83 +161,14 @@ def get_generation_consumption_comparison(plant_name, date):
         Tuple of (generation_df, consumption_df)
     """
     try:
-        plant_id = get_plant_id(plant_name)
-        
-        if not plant_id:
-            logger.warning(f"Could not find plant_id for {plant_name}")
-            return pd.DataFrame(), pd.DataFrame()
-        
-        date_str = date.strftime('%Y-%m-%d')
-        
-        # Get plant type for filtering
-        plant_type = None
-        if is_solar_plant(plant_name):
-            plant_type = 'solar'
-        else:
-            # Assume wind if not solar
-            plant_type = 'wind'
-        
-        # Use new SettlementData computed datetime approach
-        settlement_df = get_settlement_generation_consumption_data(plant_id, date_str, date_str, plant_type)
-        
-        if not settlement_df.empty:
-            # Create separate dataframes from settlement data
-            generation_df = settlement_df[['datetime', 'total_generation']].copy()
-            generation_df = generation_df.rename(columns={'datetime': 'time', 'total_generation': 'Generation'})
-            
-            consumption_df = settlement_df[['datetime', 'total_consumption']].copy()
-            consumption_df = consumption_df.rename(columns={'datetime': 'time', 'total_consumption': 'Consumption'})
-            
-            logger.info(f"Retrieved generation-consumption comparison using new SettlementData approach for {plant_name} on {date_str}")
-            return generation_df, consumption_df
-        else:
-            logger.warning(f"No settlement data found for {plant_name} on {date_str}, falling back to separate tables")
-            
-            # Fallback to original method if settlement data is not available
-            cons_units = get_consumption_unit_from_plant(plant_name)
-            if not cons_units:
-                logger.warning(f"Could not find any consumption units for {plant_name}")
-                return pd.DataFrame(), pd.DataFrame()
-                
-            # Get generation data
-            generation_df = get_generation_data_db(plant_id, date_str, date_str)
-            
-            # Get consumption data for all units and combine
-            all_consumption_dfs = []
-            for cons_unit in cons_units:
-                unit_df = get_consumption_data_db(cons_unit, date_str, date_str)
-                if not unit_df.empty:
-                    all_consumption_dfs.append(unit_df)
-            
-            if all_consumption_dfs:
-                # Combine all consumption dataframes
-                consumption_df = pd.concat(all_consumption_dfs)
-                # Aggregate by datetime to sum consumption across all units
-                consumption_df = consumption_df.groupby('datetime')['consumption'].sum().reset_index()
-            else:
-                consumption_df = pd.DataFrame(columns=['datetime', 'consumption'])
-            
-            # Rename columns to match expected format
-            if not generation_df.empty:
-                generation_df = generation_df.rename(columns={'datetime': 'time', 'generation': 'Generation'})
-            
-            if not consumption_df.empty:
-                consumption_df = consumption_df.rename(columns={'datetime': 'time', 'consumption': 'Consumption'})
-        
-        logger.info(f"Retrieved generation-consumption comparison for {plant_name} on {date_str}")
-        return generation_df, consumption_df
-        
+        return get_generation_consumption_comparison_optimized(plant_name, date)
     except Exception as e:
         logger.error(f"Failed to get generation-consumption comparison: {e}")
-        logger.error(traceback.format_exc())
         return pd.DataFrame(), pd.DataFrame()
 
-@st.cache_data(ttl=3600)
-@retry_on_exception()
 def get_daily_generation_consumption_comparison(selected_plant, start_date, end_date):
     """
-    Get daily aggregated generation vs consumption comparison.
-    Uses new SettlementData computed datetime approach for better performance.
+    Get daily aggregated generation vs consumption comparison using optimized method.
     
     Args:
         selected_plant: Name of the selected plant
@@ -255,109 +179,14 @@ def get_daily_generation_consumption_comparison(selected_plant, start_date, end_
         DataFrame with daily comparison data
     """
     try:
-        plant_id = get_plant_id(selected_plant)
-        
-        if not plant_id:
-            logger.warning(f"Could not find plant_id for {selected_plant}")
-            return pd.DataFrame()
-        
-        start_str = start_date.strftime('%Y-%m-%d')
-        end_str = end_date.strftime('%Y-%m-%d')
-        
-        # Get plant type for filtering
-        plant_type = None
-        if is_solar_plant(selected_plant):
-            plant_type = 'solar'
-        else:
-            # Assume wind if not solar
-            plant_type = 'wind'
-        
-        # Use new SettlementData computed datetime approach
-        settlement_df = get_settlement_generation_consumption_data(plant_id, start_str, end_str, plant_type)
-        
-        if not settlement_df.empty:
-            # Aggregate by date for daily comparison
-            settlement_df['date'] = settlement_df['datetime'].dt.date
-            daily_df = settlement_df.groupby('date').agg({
-                'total_generation': 'sum',
-                'total_consumption': 'sum'
-            }).reset_index()
-            
-            # Convert date to datetime for consistency
-            daily_df['date'] = pd.to_datetime(daily_df['date'])
-            
-            # Rename columns to match expected format
-            daily_df = daily_df.rename(columns={
-                'total_generation': 'generation_kwh',
-                'total_consumption': 'consumption_kwh'
-            })
-            
-            logger.info(f"Retrieved daily comparison using new SettlementData approach for {selected_plant} from {start_str} to {end_str}")
-            return daily_df
-        else:
-            logger.warning(f"No settlement data found for {selected_plant}, falling back to separate tables")
-            
-            # Fallback to original method if settlement data is not available
-            cons_units = get_consumption_unit_from_plant(selected_plant)
-            if not cons_units:
-                logger.warning(f"Could not find any consumption units for {selected_plant}")
-                return pd.DataFrame()
-            
-            # Get daily aggregated data
-            generation_df = get_daily_aggregated_generation_db(plant_id, start_str, end_str)
-            
-            # Get consumption data for all units and combine
-            all_consumption_dfs = []
-            for cons_unit in cons_units:
-                unit_df = get_daily_aggregated_consumption_db(cons_unit, start_str, end_str)
-                if not unit_df.empty:
-                    all_consumption_dfs.append(unit_df)
-            
-            if all_consumption_dfs:
-                # Combine all consumption dataframes
-                consumption_df = pd.concat(all_consumption_dfs)
-                # Aggregate by date to sum consumption across all units
-                consumption_df = consumption_df.groupby('date')['consumption_kwh'].sum().reset_index()
-            else:
-                consumption_df = pd.DataFrame(columns=['date', 'consumption_kwh'])
-            
-            if generation_df.empty or consumption_df.empty:
-                logger.warning(f"No data found for {selected_plant} from {start_str} to {end_str}")
-                return pd.DataFrame()
-            
-            # Merge the dataframes
-            merged_df = pd.merge(generation_df, consumption_df, on='date', how='outer')
-            merged_df = merged_df.fillna(0)
-            
-            # Rename columns to match expected format
-            # Handle both lowercase and capitalized column names
-            column_mapping = {}
-            if 'generation' in merged_df.columns:
-                column_mapping['generation'] = 'generation_kwh'
-            if 'Generation' in merged_df.columns:
-                column_mapping['Generation'] = 'generation_kwh'
-            if 'consumption' in merged_df.columns:
-                column_mapping['consumption'] = 'consumption_kwh'
-            if 'Consumption' in merged_df.columns:
-                column_mapping['Consumption'] = 'consumption_kwh'
-            
-            if column_mapping:
-                merged_df = merged_df.rename(columns=column_mapping)
-            
-            logger.info(f"Retrieved daily comparison from separate tables for {selected_plant} from {start_str} to {end_str}")
-            return merged_df
-        
+        return get_daily_generation_consumption_comparison_optimized(selected_plant, start_date, end_date)
     except Exception as e:
         logger.error(f"Failed to get daily generation-consumption comparison: {e}")
-        logger.error(traceback.format_exc())
         return pd.DataFrame()
 
-@st.cache_data(ttl=3600)
-@retry_on_exception()
 def get_generation_only_data(plant_name, start_date, end_date=None):
     """
-    Get generation-only data for a plant.
-    Uses new SettlementData computed datetime approach for better performance.
+    Get generation-only data using optimized method.
     
     Args:
         plant_name: Name of the plant
@@ -368,80 +197,15 @@ def get_generation_only_data(plant_name, start_date, end_date=None):
         DataFrame with generation data
     """
     try:
-        if end_date is None:
-            end_date = start_date
-        
-        plant_id = get_plant_id(plant_name)
-        if not plant_id:
-            logger.warning(f"Could not find plant_id for {plant_name}")
-            return pd.DataFrame()
-        
-        start_str = start_date.strftime('%Y-%m-%d')
-        end_str = end_date.strftime('%Y-%m-%d')
-        
-        # Get plant type for filtering
-        plant_type = None
-        if is_solar_plant(plant_name):
-            plant_type = 'solar'
-        else:
-            # Assume wind if not solar
-            plant_type = 'wind'
-        
-        # Use new SettlementData computed datetime approach
-        settlement_df = get_settlement_generation_data(plant_id, start_str, end_str, plant_type)
-        
-        if not settlement_df.empty:
-            # Check if single day or multi-day
-            if start_date == end_date:
-                # Single day - return 15-minute data
-                generation_df = settlement_df[['datetime', 'total_generation']].copy()
-                generation_df = generation_df.rename(columns={'datetime': 'time', 'total_generation': 'generation_kwh'})
-                # Add hour column for single day plotting
-                generation_df['hour'] = generation_df['time'].dt.hour
-            else:
-                # Multi-day - return daily aggregated data
-                settlement_df['date'] = settlement_df['datetime'].dt.date
-                daily_df = settlement_df.groupby('date').agg({
-                    'total_generation': 'sum'
-                }).reset_index()
-                daily_df['date'] = pd.to_datetime(daily_df['date'])
-                generation_df = daily_df.rename(columns={'date': 'time', 'total_generation': 'generation_kwh'})
-            
-            logger.info(f"Retrieved generation data using new SettlementData approach for {plant_name} from {start_str} to {end_str}")
-            return generation_df
-        else:
-            logger.warning(f"No settlement data found for {plant_name}, falling back to generation table")
-            
-            # Fallback to original method if settlement data is not available
-            # Check if single day or multi-day
-            if start_date == end_date:
-                # Single day - return 15-minute data
-                generation_df = get_generation_data_db(plant_id, start_str, end_str)
-                if not generation_df.empty:
-                    generation_df = generation_df.rename(columns={'datetime': 'time', 'generation': 'generation_kwh'})
-                    # Add hour column for single day plotting
-                    generation_df['hour'] = generation_df['time'].dt.hour
-            else:
-                # Multi-day - return daily aggregated data
-                generation_df = get_daily_aggregated_generation_db(plant_id, start_str, end_str)
-                if not generation_df.empty:
-                    generation_df = generation_df.rename(columns={'date': 'time', 'generation': 'generation_kwh'})
-            
-            logger.info(f"Retrieved generation data from generation table for {plant_name} from {start_str} to {end_str}")
-            return generation_df
-        
+        return get_generation_only_data_optimized(plant_name, start_date, end_date)
     except Exception as e:
         logger.error(f"Failed to get generation data: {e}")
-        logger.error(traceback.format_exc())
         return pd.DataFrame()
 
-# Consumption data functions
-@st.cache_data(ttl=3600)
-@retry_on_exception()
+# Consumption data functions - using optimized versions
 def get_consumption_data_from_csv(plant_name, start_date, end_date=None):
     """
-    Get consumption data for a plant.
-    Uses new SettlementData computed datetime approach for better performance.
+    Get consumption data using optimized method.
     
     Args:
         plant_name: Name of the plant
@@ -452,58 +216,9 @@ def get_consumption_data_from_csv(plant_name, start_date, end_date=None):
         DataFrame with consumption data (columns: time, Consumption)
     """
     try:
-        if end_date is None:
-            end_date = start_date
-        
-        plant_id = get_plant_id(plant_name)
-        if not plant_id:
-            logger.warning(f"Could not find plant_id for {plant_name}")
-            return pd.DataFrame()
-        
-        start_str = start_date.strftime('%Y-%m-%d')
-        end_str = end_date.strftime('%Y-%m-%d')
-        
-        # Get plant type for filtering
-        plant_type = None
-        if is_solar_plant(plant_name):
-            plant_type = 'solar'
-        else:
-            # Assume wind if not solar
-            plant_type = 'wind'
-        
-        # Use new SettlementData computed datetime approach
-        settlement_df = get_settlement_consumption_data(plant_id, start_str, end_str, plant_type)
-        
-        if not settlement_df.empty:
-            # Extract consumption data
-            consumption_df = settlement_df[['datetime', 'total_consumption']].copy()
-            consumption_df = consumption_df.rename(columns={'datetime': 'time', 'total_consumption': 'Consumption'})
-            
-            logger.info(f"Retrieved consumption data using new SettlementData approach for {plant_name} from {start_str} to {end_str}")
-            return consumption_df
-        else:
-            logger.warning(f"No settlement data found for {plant_name}, falling back to consumption table")
-            
-            # Fallback to original method if settlement data is not available
-            # Get client name from plant name using client.json mapping
-            client_name = get_client_name_from_plant_name(plant_name)
-            if not client_name:
-                logger.warning(f"Could not find client name for plant {plant_name}")
-                return pd.DataFrame()
-            
-            # Get consumption data using client name
-            consumption_df = get_consumption_data_by_client(client_name, start_str, end_str)
-            
-            if not consumption_df.empty:
-                # Rename columns to match expected format
-                consumption_df = consumption_df.rename(columns={'datetime': 'time', 'consumption': 'Consumption'})
-            
-            logger.info(f"Retrieved consumption data from consumption table for {plant_name} (client: {client_name}) from {start_str} to {end_str}")
-            return consumption_df
-        
+        return get_consumption_data_optimized_wrapper(plant_name, start_date, end_date)
     except Exception as e:
         logger.error(f"Failed to get consumption data: {e}")
-        logger.error(traceback.format_exc())
         return pd.DataFrame()
 
 @st.cache_data(ttl=3600)
@@ -711,13 +426,10 @@ def get_combined_wind_solar_generation(client_name, start_date, end_date):
         logger.error(traceback.format_exc())
         return pd.DataFrame()
 
-# Time-of-Day (ToD) functions
-@st.cache_data(ttl=3600)
-@retry_on_exception()
+# Time-of-Day (ToD) functions - using optimized versions
 def get_tod_binned_data(plant_name, start_date, end_date=None):
     """
-    Get Time-of-Day binned data for a plant using computed datetime approach.
-    This function now uses the new SettlementData computed datetime approach for better performance.
+    Get Time-of-Day binned data using optimized method.
     
     Args:
         plant_name: Name of the plant
@@ -728,130 +440,9 @@ def get_tod_binned_data(plant_name, start_date, end_date=None):
         DataFrame with ToD binned data
     """
     try:
-        if end_date is None:
-            end_date = start_date
-        
-        plant_id = get_plant_id(plant_name)
-        if not plant_id:
-            logger.warning(f"Could not find plant_id for {plant_name}")
-            return pd.DataFrame()
-        
-        start_str = start_date.strftime('%Y-%m-%d')
-        end_str = end_date.strftime('%Y-%m-%d')
-        
-        # Get plant type for filtering
-        plant_type = None
-        if is_solar_plant(plant_name):
-            plant_type = 'solar'
-        else:
-            # Assume wind if not solar
-            plant_type = 'wind'
-        
-        # Use new SettlementData computed datetime approach
-        logger.info(f"Using new computed datetime approach for ToD data for {plant_name}")
-        tod_df = get_settlement_tod_aggregated_data(plant_id, start_str, end_str, plant_type)
-        
-        if not tod_df.empty:
-            # Rename columns to match expected format for visualization
-            rename_dict = {}
-            if 'allocated_generation_total' in tod_df.columns:
-                rename_dict['allocated_generation_total'] = 'generation_kwh'
-            if 'consumption_total' in tod_df.columns:
-                rename_dict['consumption_total'] = 'consumption_kwh'
-            if 'surplus_total' in tod_df.columns:
-                rename_dict['surplus_total'] = 'surplus'
-            
-            if rename_dict:
-                tod_df = tod_df.rename(columns=rename_dict)
-            
-            # Ensure surplus column exists
-            if 'generation_kwh' in tod_df.columns and 'consumption_kwh' in tod_df.columns and 'surplus' not in tod_df.columns:
-                tod_df['surplus'] = tod_df['generation_kwh'] - tod_df['consumption_kwh']
-            
-            logger.info(f"Retrieved ToD data using computed datetime for {plant_name} from {start_str} to {end_str}")
-            logger.info(f"Total generation: {tod_df['generation_kwh'].sum():.2f} kWh")
-            logger.info(f"Total consumption: {tod_df['consumption_kwh'].sum():.2f} kWh")
-            logger.info(f"ToD bins: {tod_df['tod_bin'].tolist()}")
-            
-            # Log individual ToD bin values for debugging
-            for _, row in tod_df.iterrows():
-                logger.info(f"ToD bin '{row['tod_bin']}': Gen={row['generation_kwh']:.2f} kWh, Cons={row['consumption_kwh']:.2f} kWh")
-            
-            return tod_df
-        else:
-            logger.warning(f"No settlement ToD data found for {plant_name}, falling back to original method")
-            
-            # Fallback to original method if settlement data is not available
-            tod_df = get_tod_aggregated_data_db(plant_id, start_str, end_str)
-            
-            if tod_df.empty:
-                logger.warning(f"No ToD data found for {plant_name}")
-                return pd.DataFrame()
-            
-            # Check if this is multi-day data
-            is_multi_day = start_date != end_date
-            
-            if is_multi_day:
-                # For multi-day analysis, use total values
-                start_date_obj = pd.to_datetime(start_str).date()
-                
-                # Check if we have total aggregation data
-                potential_total_agg = tod_df[tod_df['date'] == start_date_obj].copy()
-                
-                if not potential_total_agg.empty:
-                    # Use total values for multi-day ToD comparison
-                    rename_dict = {}
-                    if 'allocated_generation_total' in potential_total_agg.columns:
-                        rename_dict['allocated_generation_total'] = 'generation_kwh'
-                    if 'consumption_total' in potential_total_agg.columns:
-                        rename_dict['consumption_total'] = 'consumption_kwh'
-                    
-                    if rename_dict:
-                        potential_total_agg = potential_total_agg.rename(columns=rename_dict)
-                    
-                    # Calculate surplus
-                    if 'generation_kwh' in potential_total_agg.columns and 'consumption_kwh' in potential_total_agg.columns:
-                        potential_total_agg['surplus'] = potential_total_agg['generation_kwh'] - potential_total_agg['consumption_kwh']
-                    
-                    return potential_total_agg
-                else:
-                    # Fallback: aggregate the daily data ourselves
-                    total_aggregation = tod_df.groupby('tod_bin').agg({
-                        'allocated_generation_total': 'sum',
-                        'consumption_total': 'sum',
-                        'surplus_total': 'sum',
-                        'interval_count': 'sum'
-                    }).reset_index()
-                    total_aggregation['date'] = start_date_obj
-                    
-                    # Rename columns
-                    total_aggregation = total_aggregation.rename(columns={
-                        'allocated_generation_total': 'generation_kwh',
-                        'consumption_total': 'consumption_kwh',
-                        'surplus_total': 'surplus'
-                    })
-                    
-                    return total_aggregation
-            else:
-                # For single-day analysis, use normalized values
-                rename_dict = {}
-                if 'allocated_generation_normalized' in tod_df.columns:
-                    rename_dict['allocated_generation_normalized'] = 'generation_kwh'
-                if 'consumption_normalized' in tod_df.columns:
-                    rename_dict['consumption_normalized'] = 'consumption_kwh'
-                
-                if rename_dict:
-                    tod_df = tod_df.rename(columns=rename_dict)
-                
-                # Calculate surplus
-                if 'generation_kwh' in tod_df.columns and 'consumption_kwh' in tod_df.columns:
-                    tod_df['surplus'] = tod_df['generation_kwh'] - tod_df['consumption_kwh']
-                
-                return tod_df
-        
+        return get_tod_binned_data_optimized(plant_name, start_date, end_date)
     except Exception as e:
         logger.error(f"Failed to get ToD data: {e}")
-        logger.error(traceback.format_exc())
         return pd.DataFrame()
 
 # Power cost analysis functions

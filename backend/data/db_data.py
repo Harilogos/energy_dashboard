@@ -146,6 +146,7 @@ def get_consumption_data_by_client(client_name: str, start_date: str, end_date: 
         df['consumption'] = pd.to_numeric(df['consumption'], errors='coerce').fillna(0)
         
         logger.info(f"Retrieved {len(df)} consumption records for client {client_name}")
+        
         return df
         
     except Exception as e:
@@ -341,6 +342,7 @@ def get_settlement_generation_consumption_data(plant_id: str, start_date: str, e
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
         logger.info(f"Retrieved {len(df)} settlement generation-consumption records for plant {plant_id}")
+       
         return df
         
     except Exception as e:
@@ -481,6 +483,7 @@ def get_settlement_consumption_data(plant_id: str, start_date: str, end_date: st
         df['total_consumption'] = pd.to_numeric(df['total_consumption'], errors='coerce').fillna(0)
         
         logger.info(f"Retrieved {len(df)} settlement consumption records for plant {plant_id}")
+        
         return df
         
     except Exception as e:
@@ -1211,8 +1214,8 @@ def get_monthly_energy_metrics_data_db(plant_name: str, client_name: str = None)
         # Build query to get aggregated monthly data
         query = session.query(
             func.date_format(BankingSettlement.date, '%Y-%m').label('month'),
-            # Settled without banking = surplus_generation_sum (before any settlement)
-            func.sum(func.coalesce(BankingSettlement.surplus_generation_sum, 0)).label('settled_without_banking'),
+            # Settled without banking = matched_settled_sum (initial amount that could be directly matched and settled)
+            func.sum(func.coalesce(BankingSettlement.matched_settled_sum, 0)).label('settled_without_banking'),
             # Settled with banking = matched_settled_sum + intra_settlement + inter_settlement
             func.sum(
                 func.coalesce(BankingSettlement.matched_settled_sum, 0) +

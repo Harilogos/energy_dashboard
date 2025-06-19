@@ -1170,39 +1170,52 @@ def display_generation_consumption_view(selected_plant, selected_date, section="
     logger.info(f"Single day - Lapsed units calculated as generation after loss minus consumption: {lapsed_units:.2f} kWh")
     lapsed_units_mwh = lapsed_units / 1000
 
+    # Add CSS to style metric containers
+    st.markdown("""
+    <style>
+    [data-testid="metric-container"] [data-testid="metric-container-label"] {
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    [data-testid="metric-container"] [data-testid="metric-container-value"] {
+        font-size: 0.7em;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Create 5 horizontal boxes with main metrics using Streamlit columns
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
         st.metric(
             label="Total Generation",
-            value=f"{total_generation_mwh:.2f} MWh"
+            value=f"{total_generation_mwh:.0f} MWh"
         )
 
     with col2:
         st.metric(
-            label="Total Generation (after loss)",
-            value=f"{total_generation_after_loss_mwh:.2f} MWh",
+            label="Generation (after loss)",
+            value=f"{total_generation_after_loss_mwh:.0f} MWh",
             help=f"Generation after {loss_percentage}% transmission/distribution loss"
         )
 
     with col3:
         st.metric(
             label="Total Consumption",
-            value=f"{total_consumption_mwh:.2f} MWh"
+            value=f"{total_consumption_mwh:.0f} MWh"
         )
 
     with col4:
         st.metric(
             label="Replacement %",
-            value=f"{replacement_percentage:.2f}%",
+            value=f"{replacement_percentage:.0f}%",
             help="Percentage of consumption met by generation"
         )
 
     with col5:
         st.metric(
             label="Lapsed Units",
-            value=f"{lapsed_units_mwh:.2f} MWh",
+            value=f"{lapsed_units_mwh:.0f} MWh",
             help="Excess generation that couldn't be consumed (time-based calculation)"
         )
 
@@ -1282,39 +1295,52 @@ def display_daily_generation_consumption_view(selected_plant, start_date, end_da
         logger.info(f"Multiple days - Lapsed units calculated as generation after loss minus consumption: {lapsed_units:.2f} kWh")
         lapsed_units_mwh = lapsed_units / 1000
 
+        # Add CSS to style metric containers
+        st.markdown("""
+        <style>
+        [data-testid="metric-container"] [data-testid="metric-container-label"] {
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        [data-testid="metric-container"] [data-testid="metric-container-value"] {
+            font-size: 0.7em;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # Create 5 horizontal boxes with main metrics using Streamlit columns
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
             st.metric(
                 label="Total Generation",
-                value=f"{total_generation_mwh:.2f} MWh"
+                value=f"{total_generation_mwh:.0f} MWh"
             )
 
         with col2:
             st.metric(
-                label="Total Generation (after loss)",
-                value=f"{total_generation_after_loss_mwh:.2f} MWh",
+                label="Generation (after loss)",
+                value=f"{total_generation_after_loss_mwh:.0f} MWh",
                 help=f"Generation after {loss_percentage}% transmission/distribution loss"
             )
 
         with col3:
             st.metric(
                 label="Total Consumption",
-                value=f"{total_consumption_mwh:.2f} MWh"
+                value=f"{total_consumption_mwh:.0f} MWh"
             )
 
         with col4:
             st.metric(
                 label="Replacement %",
-                value=f"{replacement_percentage:.2f}%",
+                value=f"{replacement_percentage:.0f}%",
                 help="Percentage of consumption met by generation"
             )
 
         with col5:
             st.metric(
                 label="Lapsed Units",
-                value=f"{lapsed_units_mwh:.2f} MWh",
+                value=f"{lapsed_units_mwh:.0f} MWh",
                 help="Excess generation that couldn't be consumed (time-based calculation)"
             )
 
@@ -1562,8 +1588,7 @@ def display_tod_generation_view(selected_plant, start_date, end_date=None, secti
                     # Add date column
                     day_df['date'] = current_date
                     # Ensure generation values are preserved
-                    if 'generation_kwh' in day_df.columns:
-                        logger.info(f"Day {current_date}: Found generation data with sum {day_df['generation_kwh'].sum():.2f} kWh")
+
                     all_days_df = pd.concat([all_days_df, day_df], ignore_index=True)
                 else:
                     # If no data found for this day, create empty dataframe with date column
@@ -1625,6 +1650,17 @@ def display_tod_generation_view(selected_plant, start_date, end_date=None, secti
 
     # Display the plot
     st.pyplot(fig)
+
+    # Create and display ToD summary table
+    if not all_days_df.empty and 'tod_bin' in all_days_df.columns and 'generation_kwh' in all_days_df.columns:
+        st.subheader("ToD Generation Summary")
+        
+        # Aggregate generation data by ToD bin
+        tod_summary = all_days_df.groupby('tod_bin')['generation_kwh'].sum().to_dict()
+        
+        # Import and use the ToD summary table function
+        from frontend.components.ui_components import create_tod_summary_table
+        create_tod_summary_table(tod_summary)
 
     # Display compact download buttons
     display_download_buttons(
@@ -1759,6 +1795,17 @@ def display_tod_consumption_view(selected_plant, start_date, end_date=None, sect
 
     # Display the plot
     st.pyplot(fig)
+
+    # Create and display ToD consumption summary table
+    if not all_days_df.empty and 'tod_bin' in all_days_df.columns and 'consumption_kwh' in all_days_df.columns:
+        st.subheader("ToD Consumption Summary")
+        
+        # Aggregate consumption data by ToD bin
+        tod_summary = all_days_df.groupby('tod_bin')['consumption_kwh'].sum().to_dict()
+        
+        # Import and use the ToD consumption summary table function
+        from frontend.components.ui_components import create_tod_consumption_summary_table
+        create_tod_consumption_summary_table(tod_summary)
 
     # Display compact download buttons
     display_download_buttons(
@@ -2004,9 +2051,8 @@ def display_monthly_before_banking_settlement_view(selected_plant, section="defa
             # If intra/inter settlement not available, use settled_units_with_banking as fallback
             filtered_summary['settlement_with_banking'] = filtered_summary['settled_units_with_banking']
         
-        # Calculate "Settled Units (Without Banking)" = total_generation (raw settlement before banking)
-        if 'total_generation' in filtered_summary.columns:
-            filtered_summary['settled_without_banking'] = filtered_summary['total_generation']
+        # Note: "Settled Units (Without Banking)" comes directly from the database as matched_settled_sum
+        # No need to override it here as it's already correctly calculated in the query
         
         # Calculate "Total Settlement" = Settlement With Banking + Settlement Without Banking
         if 'settlement_with_banking' in filtered_summary.columns and 'settled_without_banking' in filtered_summary.columns:

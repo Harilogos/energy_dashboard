@@ -132,8 +132,8 @@ def get_monthly_energy_metrics_data_db(plant_name: str, client_name: str = None)
         # Build query to get aggregated monthly data
         query = session.query(
             func.coalesce(func.date_format(BankingSettlement.date, '%Y-%m'), 'Unknown').label('month'),
-            # Settled without banking = surplus_generation_sum (before any settlement)
-            func.sum(func.coalesce(BankingSettlement.surplus_generation_sum, 0)).label('settled_without_banking'),
+            # Settled without banking = matched_settled_sum (initial amount that could be directly matched and settled)
+            func.sum(func.coalesce(BankingSettlement.matched_settled_sum, 0)).label('settled_without_banking'),
             # Settled with banking = matched_settled_sum + intra_settlement + inter_settlement
             func.sum(
                 func.coalesce(BankingSettlement.matched_settled_sum, 0) +
